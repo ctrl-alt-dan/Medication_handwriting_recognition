@@ -19,7 +19,7 @@ class TuneCNN(nn.Module):
                 nn.Dropout(dropout),
             )
 
-        # ---- EXACTLY matches the training notebook ----
+        # EXACT match to your notebook
         self.features = nn.Sequential(
             block(1, 32, pool=(2, 2)),
             block(32, 64, pool=(2, 2)),
@@ -29,7 +29,7 @@ class TuneCNN(nn.Module):
 
         self.pool = nn.AdaptiveAvgPool2d((1, 1))
 
-        # ---- IMPORTANT: called "head", not "classifier" ----
+        # IMPORTANT: called "head" (matches weights)
         self.head = nn.Sequential(
             nn.Flatten(),
             nn.Linear(256, 256),
@@ -44,7 +44,7 @@ class TuneCNN(nn.Module):
         return self.head(x)
 
 
-def load_model(weights_path: str, num_classes: int = 78, device: str = "cpu"):
+def load_model(weights_path: str, num_classes: int = 78, device: str = "cpu") -> TuneCNN:
     """
     Loads the trained TuneCNN model with weights from best_tuned_cnn.pt
     Handles common checkpoint formats.
@@ -54,19 +54,31 @@ def load_model(weights_path: str, num_classes: int = 78, device: str = "cpu"):
 
     state = torch.load(weights_path, map_location=device)
 
-    # Handle different save formats
+    # Handle common save formats
     if isinstance(state, dict):
         if "model" in state:
             state = state["model"]
         elif "state_dict" in state:
             state = state["state_dict"]
 
-    missing, unexpected = model.load_state_dict(state, strict=True)
-
-    if missing or unexpected:
-        raise RuntimeError(
-            f"State dict mismatch.\nMissing keys: {missing}\nUnexpected keys: {unexpected}"
-        )
-
+    model.load_state_dict(state, strict=True)
     model.eval()
     return model
+
+
+@torch.inference_mode()
+def predict_topk(model: nn.Module, x: torch.Tensor, k: int = 5):
+    """
+    x: torch.Tensor of shape [1, 1, 64, 384] (already preprocessed)
+    Returns:
+      topk_idx: np.ndarray shape [k]
+      topk_probs: np.ndarray shape [k] (0..1)
+    """
+    if x.ndim != 4:
+        raise ValueError(f"Expected x shape [B,C,H,W], got {tuple(x.shape)}")
+
+    logits = model(x)
+    probs = torch.softmax(logits, dim=1)
+
+    topk_probs, topk_idx = torch.topk(probs, k=k, dim=1)
+    return topk_idx[0].cpu().numpy(), topk_probs[0].cpu().numpy()
