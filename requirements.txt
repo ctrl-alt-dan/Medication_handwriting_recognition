@@ -1,0 +1,17 @@
+# Core app
+streamlit==1.53.1
+
+# Crop helper
+streamlit-cropper==0.3.1
+
+# ML
+torch==2.10.0
+torchvision==0.25.0
+
+# Image / numerics
+numpy==2.1.3
+pillow==11.1.0
+opencv-python==4.13.0.92
+
+# Tables
+pandas==2.2.3
