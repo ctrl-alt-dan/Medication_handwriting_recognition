@@ -44,17 +44,12 @@ class TuneCNN(nn.Module):
         return self.head(x)
 
 
-def load_model(weights_path: str, num_classes: int = 78, device: str = "cpu") -> TuneCNN:
-    """
-    Loads the trained TuneCNN model with weights from best_tuned_cnn.pt
-    Handles common checkpoint formats.
-    """
+def load_model(weights_path: str, num_classes: int = 78, device: str = "cpu"):
     model = TuneCNN(num_classes=num_classes)
     model.to(device)
 
     state = torch.load(weights_path, map_location=device)
 
-    # Handle common save formats
     if isinstance(state, dict):
         if "model" in state:
             state = state["model"]
@@ -63,7 +58,7 @@ def load_model(weights_path: str, num_classes: int = 78, device: str = "cpu") ->
 
     model.load_state_dict(state, strict=True)
     model.eval()
-    return model
+    return model, device
 
 
 @torch.inference_mode()
