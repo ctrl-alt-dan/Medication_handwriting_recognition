@@ -62,18 +62,15 @@ def load_model(weights_path: str, num_classes: int = 78, device: str = "cpu"):
 
 
 @torch.inference_mode()
-def predict_topk(model: nn.Module, x: torch.Tensor, k: int = 5):
+def predict_topk(model, x, top_k=5, device="cpu"):
     """
-    x: torch.Tensor of shape [1, 1, 64, 384] (already preprocessed)
-    Returns:
-      topk_idx: np.ndarray shape [k]
-      topk_probs: np.ndarray shape [k] (0..1)
+    x: torch.Tensor [1, 1, 64, 384]
+    Returns: (topk_idx, topk_probs)
     """
-    if x.ndim != 4:
-        raise ValueError(f"Expected x shape [B,C,H,W], got {tuple(x.shape)}")
+    x = x.to(device)
 
     logits = model(x)
     probs = torch.softmax(logits, dim=1)
 
-    topk_probs, topk_idx = torch.topk(probs, k=k, dim=1)
+    topk_probs, topk_idx = torch.topk(probs, k=top_k, dim=1)
     return topk_idx[0].cpu().numpy(), topk_probs[0].cpu().numpy()
