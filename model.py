@@ -4,6 +4,11 @@ import torch.nn as nn
 
 
 class TuneCNN(nn.Module):
+    """
+    EXACT architecture match to DL-3-Modelling notebook
+    (the model that produced best_tuned_cnn.pt)
+    """
+
     def __init__(self, num_classes=78, dropout=0.3):
         super().__init__()
 
@@ -19,7 +24,6 @@ class TuneCNN(nn.Module):
                 nn.Dropout(dropout),
             )
 
-        # EXACT match to your notebook
         self.features = nn.Sequential(
             block(1, 32, pool=(2, 2)),
             block(32, 64, pool=(2, 2)),
@@ -29,7 +33,6 @@ class TuneCNN(nn.Module):
 
         self.pool = nn.AdaptiveAvgPool2d((1, 1))
 
-        # IMPORTANT: called "head" (matches weights)
         self.head = nn.Sequential(
             nn.Flatten(),
             nn.Linear(256, 256),
@@ -45,11 +48,15 @@ class TuneCNN(nn.Module):
 
 
 def load_model(weights_path: str, num_classes: int = 78, device: str = "cpu"):
+    """
+    Load trained TuneCNN and return (model, device)
+    """
     model = TuneCNN(num_classes=num_classes)
     model.to(device)
 
     state = torch.load(weights_path, map_location=device)
 
+    # Handle different save formats
     if isinstance(state, dict):
         if "model" in state:
             state = state["model"]
@@ -65,12 +72,19 @@ def load_model(weights_path: str, num_classes: int = 78, device: str = "cpu"):
 def predict_topk(model, x, top_k=5, device="cpu"):
     """
     x: torch.Tensor [1, 1, 64, 384]
-    Returns: (topk_idx, topk_probs)
+    Returns: (topk_indices, topk_probabilities)
     """
+    if x.ndim != 4:
+        raise ValueError(f"Expected input [B,C,H,W], got {tuple(x.shape)}")
+
     x = x.to(device)
 
     logits = model(x)
     probs = torch.softmax(logits, dim=1)
 
     topk_probs, topk_idx = torch.topk(probs, k=top_k, dim=1)
-    return topk_idx[0].cpu().numpy(), topk_probs[0].cpu().numpy()
+
+    return (
+        topk_idx[0].cpu().numpy(),
+        topk_probs[0].cpu().numpy(),
+    )
